@@ -11,7 +11,7 @@ The goal of this lab was to correctly configure a VmodTFT touchscreen/LCD with t
 * A Functionality - Add another level of complexity to pong game, ie add score display to LCD.
 
 ### Implementation
-
+In the implementation of this lab functionality, I created my own Xilinix ISE project with the `.video` library provided by Digilint for the VmodTFT peripheral. The most difficult part of this process was the instantiation of the two separate IP cores that needed to be part of the design. These cores were provided in the `ipcore_dir` folder located in the project directory of my Lab 5 project. After figuring out the code, I was able to modify the `TFTCtl` file to allow writing on the screen in blue. 
 
 #### Grades:
 * Prelab - On time
