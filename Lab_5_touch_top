@@ -1,0 +1,269 @@
+----------------------------------------------------------------------------------
+-- Company: Digilent Ro/USAFA
+-- Engineer: Elod Gyorgy/Geoffrey Novakowski
+-- 
+-- Create Date:    19:51:12 08/03/2011 
+----------------------------------------------------------------------------------
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.STD_LOGIC_ARITH.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
+use IEEE.math_real.ALL;
+
+library digilent;
+use digilent.TouchR.ALL;
+use digilent.Video.ALL;
+
+
+entity Lab_5_touch_top is
+    Port ( 
+			  TFT_R_O : out  STD_LOGIC_VECTOR (7 downto 0);
+           TFT_G_O : out  STD_LOGIC_VECTOR (7 downto 0);
+           TFT_B_O : out  STD_LOGIC_VECTOR (7 downto 0);
+           TFT_CLK_O : out  STD_LOGIC;
+           TFT_DE_O : out  STD_LOGIC;
+           TFT_BKLT_O : out  STD_LOGIC; -- LCD backlight driver EN (PWM)
+			  TFT_VDDEN_O : out STD_LOGIC; -- LCD power on/off (power sequence)
+           TFT_DISP_O : out  STD_LOGIC;
+           TP_CS_O : out  STD_LOGIC;
+           TP_DIN_O : out  STD_LOGIC;
+           TP_DOUT_I : in  STD_LOGIC;
+           TP_DCLK_O : out  STD_LOGIC;
+           TP_BUSY_I : in  STD_LOGIC;
+			  TP_PENIRQ_I : in STD_LOGIC;
+			  SW_I : in STD_LOGIC_VECTOR(7 downto 0);
+			  LED_O : out STD_LOGIC_VECTOR(7 downto 0);
+			  CLK_I : in STD_LOGIC;
+			  BTNM_I : in STD_LOGIC;
+	 		   
+			  -- Pong in/out
+			  clk : in  STD_LOGIC;
+           reset : in  STD_LOGIC;
+			  up : in STD_LOGIC;
+			  down : in STD_LOGIC;
+			  speed : in STD_LOGIC;
+           tmds : out  STD_LOGIC_VECTOR (3 downto 0);
+           tmdsb : out  STD_LOGIC_VECTOR (3 downto 0)
+			  );
+			  
+end Lab_5_touch_top;
+
+architecture Behavioral of Lab_5_touch_top is
+
+	constant Z_high : natural := 1500;
+	constant Z_low : natural := 200;
+	constant SCALING_FACTOR : natural := 12;
+
+	constant X_SCALING : natural := natural(round(real(H_480_272p_AV * (2**SCALING_FACTOR)) / 
+	real(digilent.TouchR.VmodTFT.TopRight.X - digilent.TouchR.VmodTFT.TopLeft.X)));
+	constant Y_SCALING : natural := natural(round(real(V_480_272p_AV * (2**SCALING_FACTOR)) / 
+	real(digilent.TouchR.VmodTFT.BottomLeft.Y - digilent.TouchR.VmodTFT.TopLeft.Y))); 
+
+	signal TouchXNorm1, TouchYNorm1 : std_logic_vector(11 downto 0);
+	signal TouchXNorm2, TouchYNorm2 : std_logic_vector(11+SCALING_FACTOR downto 0);
+	signal TouchXNorm : natural range 0 to H_480_272p_AV;
+	signal TouchYNorm : natural range 0 to V_480_272p_AV;
+	signal TouchEn : std_logic;
+
+	signal TFTClk, TFTClk180, SysRst, SysClk : std_logic;
+	signal TFTMSel : std_logic_vector(3 downto 0);
+
+	signal TouchX, TouchY, TouchZ : std_logic_vector(11 downto 0);
+	attribute KEEP : string;
+	attribute KEEP of TouchXNorm: signal is "TRUE";
+	attribute KEEP of TouchYNorm: signal is "TRUE";
+	
+-- Pong Signals	
+	signal pixel_clk, serialize_clk, serialize_clk_n : std_logic;
+	signal h_sync_inter, v_sync_inter, blank_inter, v_completed_inter : std_logic;
+	signal red_inter, green_inter, blue_inter : STD_LOGIC_VECTOR (7 downto 0);
+	signal row_inter, column_inter : unsigned(10 downto 0);
+	signal ballx_inter, bally_inter, paddley_intermed : STD_LOGIC_VECTOR(10 downto 0);
+	signal red_s, green_s, blue_s, clock_s: std_logic;
+
+
+begin
+----------------------------------------------------------------------------------
+-- System Control Unit
+-- This component provides a System Clock, a Synchronous Reset
+----------------------------------------------------------------------------------
+	Inst_SysCon: entity work.SysCon PORT MAP(
+		CLK_I => CLK_I,
+		CLK_O => SysClk,
+		TFT_CLK_O => TFTClk,
+		TFT_CLK_180_O => TFTClk180,
+		MSEL_O => TFTMSel,
+		RSTN_I => BTNM_I,
+		SW_I => SW_I,
+		ASYNC_RST => SysRst
+	);
+----------------------------------------------------------------------------------
+-- TFT Controller
+----------------------------------------------------------------------------------	
+	Inst_TFTCtl: entity work.TFTCtl PORT MAP(
+		CLK_I => TFTClk,
+		CLK_180_I => TFTClk180,
+		RST_I => SysRst,
+		X_I => TouchXNorm,
+		Y_I => TouchYNorm,
+		Z_I => TouchZ,
+		WE_I => TouchEn,
+		WR_CLK => SysClk,
+		R_O => TFT_R_O,
+		G_O => TFT_G_O,
+		B_O => TFT_B_O,
+		DE_O => TFT_DE_O,
+		CLK_O => TFT_CLK_O,
+		DISP_O => TFT_DISP_O,
+		BKLT_O => TFT_BKLT_O,
+		VDDEN_O => TFT_VDDEN_O,
+		MSEL_I => TFTMSel
+	);	
+	
+----------------------------------------------------------------------------------
+-- Touch Controller
+----------------------------------------------------------------------------------		
+	Inst_TouchCtrl: entity work.TouchCtrl GENERIC MAP (CLOCKFREQ => 100) PORT MAP(
+		CLK_I => SysClk,
+		RST_I => SysRst,
+		X_O => TouchX,
+		Y_O => TouchY,
+		Z_O => TouchZ,
+		PENIRQ_I => TP_PENIRQ_I,
+		CS_O => TP_CS_O,
+		DIN_O => TP_DIN_O,
+		DOUT_I => TP_DOUT_I,
+		DCLK_O => TP_DCLK_O,
+		BUSY_I => TP_BUSY_I
+	);
+
+----------------------------------------------------------------------------------
+-- Pong Instantiations
+----------------------------------------------------------------------------------	
+
+	vga_sync_connect : entity work.vga_sync(behavioral)
+		PORT MAP ( clk => pixel_clk,
+           reset =>  reset, 
+           h_sync =>  h_sync_inter,
+           v_sync =>  v_sync_inter,
+           v_completed =>  v_completed_inter,
+           blank => blank_inter,
+           row =>  row_inter,
+           column => column_inter 		
+	);
+
+ 
+	pixel_gen_connect : entity work.pixel_gen(behavioral)
+		PORT MAP(
+			row => row_inter,
+			column => column_inter,
+			blank => blank_inter,
+			ball_x => ballx_inter,
+			ball_y => bally_inter,
+			paddle_y => paddley_intermed,
+			r => red_inter,
+			g => green_inter,
+			b => blue_inter
+	);
+
+
+	pong_control_connect : entity work.pong_control(behavioral)
+		PORT MAP(
+			clk =>  pixel_clk,
+			reset =>  reset,
+			up => up,
+			down => down,
+			speed => speed,
+			v_completed =>  v_completed_inter,
+			ball_x =>   ballx_inter,
+			ball_y =>   bally_inter,
+			paddle_y =>  paddley_intermed
+	);	
+	
+	-- Clock divider - creates pixel clock from 100MHz clock
+    inst_DCM_pixel: DCM
+    generic map(
+                   CLKFX_MULTIPLY => 2,
+                   CLKFX_DIVIDE   => 8,
+                   CLK_FEEDBACK   => "1X"
+               )
+    port map(
+                clkin => clk,
+                rst   => reset,
+                clkfx => pixel_clk
+            );
+
+	 -- Clock divider - creates HDMI serial output clock
+    inst_DCM_serialize: DCM
+    generic map(
+                   CLKFX_MULTIPLY => 10, -- 5x speed of pixel clock
+                   CLKFX_DIVIDE   => 8,
+                   CLK_FEEDBACK   => "1X"
+               )
+    port map(
+                clkin => clk,
+                rst   => reset,
+                clkfx => serialize_clk,
+                clkfx180 => serialize_clk_n
+            );
+
+    -- Convert VGA signals to HDMI (actually, DVID ... but close enough)
+    inst_dvid: entity work.dvid
+    port map(
+                clk       => serialize_clk,
+                clk_n     => serialize_clk_n, 
+                clk_pixel => pixel_clk,
+                red_p     => red_inter,
+                green_p   => green_inter,
+                blue_p    => blue_inter,
+                blank     => blank_inter,
+                hsync     => h_sync_inter,
+                vsync     => v_sync_inter,
+                -- outputs to TMDS drivers
+                red_s     => red_s,
+                green_s   => green_s,
+                blue_s    => blue_s,
+                clock_s   => clock_s
+            );
+
+-- Output the HDMI data on differential signalling pins
+    OBUFDS_blue  : OBUFDS port map
+        ( O  => TMDS(0), OB => TMDSB(0), I  => blue_s  );
+    OBUFDS_red   : OBUFDS port map
+        ( O  => TMDS(1), OB => TMDSB(1), I  => green_s );
+    OBUFDS_green : OBUFDS port map
+        ( O  => TMDS(2), OB => TMDSB(2), I  => red_s   );
+    OBUFDS_clock : OBUFDS port map
+        ( O  => TMDS(3), OB => TMDSB(3), I  => clock_s );
+
+----------------------------------------------------------------------------------
+-- Process Touch Data
+----------------------------------------------------------------------------------		
+	TouchXNorm1 <= (TouchX - digilent.TouchR.VmodTFT.TopLeft.X);
+	TouchYNorm1 <= (TouchY - digilent.TouchR.VmodTFT.TopLeft.Y);
+	process (SysClk) 
+	begin 
+		if Rising_Edge(SysClk) then
+			TouchXNorm2 <= TouchXNorm1 * CONV_STD_LOGIC_VECTOR(X_SCALING, SCALING_FACTOR);
+			TouchYNorm2 <= TouchYNorm1 * CONV_STD_LOGIC_VECTOR(Y_SCALING, SCALING_FACTOR);
+			if (TouchZ < Z_high and TouchZ > Z_low) then
+				TouchEn <= '1';
+			else
+				TouchEn <= '0';
+			end if;
+		end if;
+	end process;
+	
+	TouchXNorm <= CONV_INTEGER(TouchXNorm2(TouchXNorm2'high downto SCALING_FACTOR));
+	TouchYNorm <= CONV_INTEGER(TouchYNorm2(TouchYNorm2'high downto SCALING_FACTOR));
+	
+LED_DISPLAY_MUX: LED_O <= 	TouchX(TouchX'high downto TouchX'high-7) when SW_I(7 downto 6) = "00" else
+									TouchY(TouchY'high downto TouchY'high-7) when SW_I(7 downto 6) = "01" else
+									TouchZ(TouchZ'high downto TouchZ'high-7);
+
+TFT_COLOR: R_O <=		TouchX(TouchX'high downto TouchX'high-7) when SW_I(7 downto 6) = "00" else
+									TouchY(TouchY'high downto TouchY'high-7) when SW_I(7 downto 6) = "01" else
+									TouchZ(TouchZ'high downto TouchZ'high-7);
+										
+end Behavioral;
+
