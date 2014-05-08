@@ -1,8 +1,6 @@
 Lab 5 - Final Project
 ===========
 
-https://www.youtube.com/watch?v=wZ-H2GyDuz4&feature=youtu.be
-
 ### Introduction
 
 The goal of this lab was to correctly configure a VmodTFT touchscreen/LCD with the Digilent Atlys Spartan-6 FPGA board. This peripheral device is a full color screen that is capable of reading touch inputs and displaying video based on the touch inputs. After basic fucntionality, the goal was to use the touch screen to control the pong paddle in the pong game that was developed in Lab 2.
@@ -12,24 +10,21 @@ The goal of this lab was to correctly configure a VmodTFT touchscreen/LCD with t
 * B Functionality - Control Paddle in Pong game with touch screen
 * A Functionality - Add another level of complexity to pong game, ie add score display to LCD.
 
-#### Grades:
-* Prelab - On time
-* Basic Functionality - Complete, on time
-* B Functionality - None
-* A Functionality - None
-
-### Introduction
-
-The goal of the laboratory exercise was to interface different peripherals of an FPGA (both the switches and the LEDs) to processors that we created, using both our written MicroBlaze and PicoBlaze processors.  
-
 ### Implementation
 
 The implementation of this lab consisted of having to write code in OpenPicIDE for the PicoBlaze processor, and then output the code to a VHDL file for our ROM. After the ROM was created in VHDL, the UART modules were then written and instantiated in our top level file. After this, the code was then written to handle the `swt` and `led` commands in Tera Term (our chosen terminal program).
 
 For the second part of the lab, this same functioanlity was to be implemented using MicroBlaze. The processor first had to be built using Xilinx Platform Studio. This design was then exported to SDK, where C code was written to accomplish the required functionality. The port map for my MicroBlaze processor can be seen below:
 
-![alt text](http://i.imgur.com/veArrWW.png "MicroBlaze Port Map")
+#### Grades:
+* Prelab - On time
+* Basic Functionality - Complete, on time
+* B Functionality - None
+* A Functionality - None
 
+A video demoing the basic functionaity of this lab exercise can be seen below. In addition to displaying lines/drawings based on touch inputs, the screen can also be adjusted/turned off by the switches on the FPGA board.
+
+https://www.youtube.com/watch?v=wZ-H2GyDuz4&feature=youtu.be
 
 ### Test/Debug
 
