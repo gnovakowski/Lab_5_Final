@@ -26,11 +26,11 @@ https://www.youtube.com/watch?v=wZ-H2GyDuz4&feature=youtu.be
 ### Test/Debug
 
 While working on this lab, I experienced many issues while setting up my peripheral. The problems I experienced can be seen below:
-
+* The first major issue I experienced was in my inital design of the project for the VmodTFT. As I was adding the provided required video library, I had to instantiate two separate IP cores as they were provided in the `ipcore_dir` project directory. There were many issues in the design when I attempted to parse it. After a while, after regenerating the cores in my design, I was able to parse the design without any issues. 
+* The next major issue I experienced was in the initialziation of the LCD display. I could get a response out of the touch screen which could be seen by the LEDs on the FPGA board, but I could not figure out how to actually activate the screen. After delving deeper into the code and referencing example code provided by Digilent, I was eventually able to not only get the LCD display to turn on, but I could get it to display colors.
+* The next and biggest issue I experienced was after I had completed the basic functionality and was attempting to merge my project with the pong game project from Lab 2. To the best of my knowledge, I had successfully merged the two projects with a common top shell file. I made especially sure that none of my inputs, outputs, or signals were named the same across the project, but I still experienced a significant issue. For some reason, with the new design, I was getting errors with my TDMS encoder. I was getting errors that for some reason, it did not like my arithmetic signals that were fine when used in Lab 2 (ie `+`, `-`, `>`). I was unable to solve this issue, and so I ended up not being able to complete B or A functionality.  
 
 
 ### Conclusion
 
-Throughout the course of this lab, the major thing that I noticed was that although it was not as difficult as Lab 2, it was slightly more confusing in the beginning stages. The confusion stemmed from having a semi complete list of required modules, with no real direction on the order in which to instantiate them. This problem was overcome by thinking through the process carefully and appropriately deciding the placement of each of the modules. There is nothing that I would change in this lab, other than maybe assigning less points to A functionality, as it seems extremely difficult, yet carries 10% of the project grade.
-
- 
+Throughout the course of this lab, I learned how to sufficiently intereface my FPGA with peripheral modules designed for the Atlys FPGA board. Despite encountering numerous issues/errors, I was, for the most part, able to overcome them to complete at least basic functionality, I felt that previous lab exercises in this class had adequately prepared me to complete this project.
